@@ -7,12 +7,13 @@ class QRegExpValidator;
 
 class HexSpinBox : public QSpinBox
 {
-    Q_OBJECT
+    Q_OBJECT   
 
 public:
-    HexSpinBox(QWidget *parent = 0);
+    HexSpinBox(QWidget *parent = 0);  //构造函数
 
 protected:
+    //定义了三个虚函数
     QValidator::State validate(QString &text, int &pos) const;
     int valueFromText(const QString &text) const;
     QString textFromValue(int value) const;
