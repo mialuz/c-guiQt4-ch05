@@ -5,14 +5,14 @@
 IconEditor::IconEditor(QWidget *parent)
     : QWidget(parent)
 {
-    setAttribute(Qt::WA_StaticContents);
+    setAttribute(Qt::WA_StaticContents);// 告诉布局管理器，理想尺寸是它的最小尺寸，不能对它缩小！  
     setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
 
     curColor = Qt::black;
-    zoom = 8;
+    zoom = 8;// 一个像素将显示成一个8x8的正方形 
 
-    image = QImage(16, 16, QImage::Format_ARGB32);
-    image.fill(qRgba(0, 0, 0, 0));
+    image = QImage(16, 16, QImage::Format_ARGB32);  //初始化为16×16的像素大小和32位的ARGB颜色格式
+    image.fill(qRgba(0, 0, 0, 0)); //填充透明颜色，清空image中的数据
 }
 
 void IconEditor::setPenColor(const QColor &newColor)
@@ -41,8 +41,10 @@ void IconEditor::setIconImage(const QImage &newImage)
     }
 }
 
+//返回一个窗口部件的理想大小
 QSize IconEditor::sizeHint() const
 {
+    //用缩放因子乘以图像的尺寸大小作为这个窗口部件的理想大小
     QSize size = zoom * image.size();
     if (zoom >= 3)
         size += QSize(1, 1);
