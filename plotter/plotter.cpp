@@ -6,25 +6,29 @@
 Plotter::Plotter(QWidget *parent)
     : QWidget(parent)
 {
-    setBackgroundRole(QPalette::Dark);
-    setAutoFillBackground(true);
-    setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    setFocusPolicy(Qt::StrongFocus);
+    setBackgroundRole(QPalette::Dark);//该函数调用告诉QWidget使用调色板中的“暗”分量作为重绘窗口部件的颜色，
+                                        //而不是使用“背景色分量。”
+    setAutoFillBackground(true);     //启用上个函数的机制
+    setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);//设置策略，窗口部件可以放大，可以缩小
+    setFocusPolicy(Qt::StrongFocus); //可以让窗口部件通过单击或者通过按下TAB键而输入焦点
     rubberBandIsShown = false;
 
+    //放大按钮
     zoomInButton = new QToolButton(this);
     zoomInButton->setIcon(QIcon(":/images/zoomin.png"));
     zoomInButton->adjustSize();
     connect(zoomInButton, SIGNAL(clicked()), this, SLOT(zoomIn()));
 
+    //缩小按钮
     zoomOutButton = new QToolButton(this);
     zoomOutButton->setIcon(QIcon(":/images/zoomout.png"));
     zoomOutButton->adjustSize();
     connect(zoomOutButton, SIGNAL(clicked()), this, SLOT(zoomOut()));
 
-    setPlotSettings(PlotSettings());
+    setPlotSettings(PlotSettings());//完成初始化
 }
 
+//用于制定显示绘图区时所用到的PlotSettings
 void Plotter::setPlotSettings(const PlotSettings &settings)
 {
     zoomStack.clear();
@@ -32,9 +36,10 @@ void Plotter::setPlotSettings(const PlotSettings &settings)
     curZoom = 0;
     zoomInButton->hide();
     zoomOutButton->hide();
-    refreshPixmap();
+    refreshPixmap(); //更新显示
 }
 
+//缩小 槽
 void Plotter::zoomOut()
 {
     if (curZoom > 0) {
@@ -46,6 +51,7 @@ void Plotter::zoomOut()
     }
 }
 
+//放大 槽
 void Plotter::zoomIn()
 {
     if (curZoom < zoomStack.count() - 1) {
@@ -57,39 +63,46 @@ void Plotter::zoomIn()
     }
 }
 
+//设置用于给定曲线ID中的数据
 void Plotter::setCurveData(int id, const QVector<QPointF> &data)
 {
     curveMap[id] = data;
     refreshPixmap();
 }
 
+//从curveMap中移除一条给定的曲线
 void Plotter::clearCurve(int id)
 {
     curveMap.remove(id);
     refreshPixmap();
 }
 
+//指定一个窗口部件理想的最小大小
 QSize Plotter::minimumSizeHint() const
 {
     return QSize(6 * Margin, 4 * Margin);
 }
 
+//返回一个和边白常量Margin成比例的“理想”大小，会形成合适的3：2比例
 QSize Plotter::sizeHint() const
 {
     return QSize(12 * Margin, 8 * Margin);
 }
 
+//简单地通过把该像素映射复制到窗口部件的（0,0）位置处来完成整个图形的绘制工作
 void Plotter::paintEvent(QPaintEvent * /* event */)
 {
     QStylePainter painter(this);
     painter.drawPixmap(0, 0, pixmap);
 
+    //如果橡皮筋选择框可见，可以把她绘制在图形区的顶部
     if (rubberBandIsShown) {
         painter.setPen(palette().light().color());
         painter.drawRect(rubberBandRect.normalized()
-                                       .adjusted(0, 0, -1, -1));
+                                       .adjusted(0, 0, -1, -1));  //normalized  用于确保得到的宽度和高度是正值
     }
 
+    //如果Plotter拥有焦点，就会使用窗口部件风格的drawPrimitive()函数绘制这个焦点选择框
     if (hasFocus()) {
         QStyleOptionFocusRect option;
         option.initFrom(this);
@@ -98,6 +111,7 @@ void Plotter::paintEvent(QPaintEvent * /* event */)
     }
 }
 
+//重定义大小 事件，将放大 缩小按钮防止在窗口部件的右上角
 void Plotter::resizeEvent(QResizeEvent * /* event */)
 {
     int x = width() - (zoomInButton->width()
@@ -107,6 +121,7 @@ void Plotter::resizeEvent(QResizeEvent * /* event */)
     refreshPixmap();
 }
 
+//鼠标按下事件
 void Plotter::mousePressEvent(QMouseEvent *event)
 {
     QRect rect(Margin, Margin,
@@ -118,11 +133,12 @@ void Plotter::mousePressEvent(QMouseEvent *event)
             rubberBandRect.setTopLeft(event->pos());
             rubberBandRect.setBottomRight(event->pos());
             updateRubberBandRegion();
-            setCursor(Qt::CrossCursor);
+            setCursor(Qt::CrossCursor);//十字形光标
         }
     }
 }
 
+//鼠标移动事件
 void Plotter::mouseMoveEvent(QMouseEvent *event)
 {
     if (rubberBandIsShown) {
@@ -132,6 +148,7 @@ void Plotter::mouseMoveEvent(QMouseEvent *event)
     }
 }
 
+//鼠标释放事件
 void Plotter::mouseReleaseEvent(QMouseEvent *event)
 {
     if ((event->button() == Qt::LeftButton) && rubberBandIsShown) {
@@ -152,14 +169,15 @@ void Plotter::mouseReleaseEvent(QMouseEvent *event)
         settings.maxX = prevSettings.minX + dx * rect.right();
         settings.minY = prevSettings.maxY - dy * rect.bottom();
         settings.maxY = prevSettings.maxY - dy * rect.top();
-        settings.adjust();
+        settings.adjust();  //调整数据，并为每根坐标轴找出一个合适的刻度标记符个数
 
-        zoomStack.resize(curZoom + 1);
+        zoomStack.resize(curZoom + 1); 
         zoomStack.append(settings);
-        zoomIn();
+        zoomIn();  //执行缩放操作
     }
 }
 
+//用户按下+ - 向上 向下 向左 向右6个按键时，执行的响应
 void Plotter::keyPressEvent(QKeyEvent *event)
 {
     switch (event->key()) {
@@ -190,6 +208,7 @@ void Plotter::keyPressEvent(QKeyEvent *event)
     }
 }
 
+//鼠标滚轮事件
 void Plotter::wheelEvent(QWheelEvent *event)
 {
     int numDegrees = event->delta() / 8;
@@ -203,6 +222,7 @@ void Plotter::wheelEvent(QWheelEvent *event)
     refreshPixmap();
 }
 
+//用来擦除或重新绘制橡皮筋选择框
 void Plotter::updateRubberBandRegion()
 {
     QRect rect = rubberBandRect.normalized();
@@ -212,6 +232,7 @@ void Plotter::updateRubberBandRegion()
     update(rect.right(), rect.top(), 1, rect.height());
 }
 
+//把绘图区重新绘制到脱屏像素映射上，并且对显示加以更新
 void Plotter::refreshPixmap()
 {
     pixmap = QPixmap(size());
@@ -224,6 +245,7 @@ void Plotter::refreshPixmap()
     update();
 }
 
+//绘制曲线和坐标轴后面的网格
 void Plotter::drawGrid(QPainter *painter)
 {
     QRect rect(Margin, Margin,
@@ -235,6 +257,7 @@ void Plotter::drawGrid(QPainter *painter)
     QPen quiteDark = palette().dark().color().light();
     QPen light = palette().light().color();
 
+    //绘制网格的垂直线和沿x轴方向上的标记符
     for (int i = 0; i <= settings.numXTicks; ++i) {
         int x = rect.left() + (i * (rect.width() - 1)
                                  / settings.numXTicks);
@@ -248,6 +271,8 @@ void Plotter::drawGrid(QPainter *painter)
                           Qt::AlignHCenter | Qt::AlignTop,
                           QString::number(label));
     }
+
+    //绘制网格的水平线和沿y轴方向上的标记符
     for (int j = 0; j <= settings.numYTicks; ++j) {
         int y = rect.bottom() - (j * (rect.height() - 1)
                                    / settings.numYTicks);
@@ -261,9 +286,11 @@ void Plotter::drawGrid(QPainter *painter)
                           Qt::AlignRight | Qt::AlignVCenter,
                           QString::number(label));
     }
+
     painter->drawRect(rect.adjusted(0, 0, -1, -1));
 }
 
+//在网格上绘制这些曲线
 void Plotter::drawCurves(QPainter *painter)
 {
     static const QColor colorForIds[6] = {
@@ -278,6 +305,7 @@ void Plotter::drawCurves(QPainter *painter)
     painter->setClipRect(rect.adjusted(+1, +1, -1, -1));
 
     QMapIterator<int, QVector<QPointF> > i(curveMap);
+    //迭代器遍历所有曲线
     while (i.hasNext()) {
         i.next();
 
@@ -299,6 +327,7 @@ void Plotter::drawCurves(QPainter *painter)
     }
 }
 
+//构造函数，对两个坐标轴进行初始化
 PlotSettings::PlotSettings()
 {
     minX = 0.0;
@@ -310,6 +339,7 @@ PlotSettings::PlotSettings()
     numYTicks = 5;
 }
 
+//使用两个记号之间的距离乘以一个给定数字的方式来增加（或者减少）minX minY maxX maxY
 void PlotSettings::scroll(int dx, int dy)
 {
     double stepX = spanX() / numXTicks;
@@ -321,12 +351,14 @@ void PlotSettings::scroll(int dx, int dy)
     maxY += dy * stepY;
 }
 
+//用来把minX maxX minY maxY圆整成 合适的 数值，并且用于决定每个坐标轴上应当使用的标记符个数
 void PlotSettings::adjust()
 {
     adjustAxis(minX, maxX, numXTicks);
     adjustAxis(minY, maxY, numYTicks);
 }
 
+//把min和max参数转换成 合适的 数值，并且在给定的[min,max]范围内计算出合适的标记符个数，然后把它们的numTicks参数设置成该值
 void PlotSettings::adjustAxis(double &min, double &max, int &numTicks)
 {
     const int MinTicks = 4;
